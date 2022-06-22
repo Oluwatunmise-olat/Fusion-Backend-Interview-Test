@@ -1,0 +1,16 @@
+version: '3.0'
+
+services:
+  fusion_db:
+    container_name: 'fusion-db'
+    image: 'mysql:latest'
+    volumes:
+      - fusion_vol:/var/lib/mysql
+    env_file:
+      - ./.env
+    ports:
+      - "3309:3306"
+    restart: always
+
+volumes:
+  fusion_vol:

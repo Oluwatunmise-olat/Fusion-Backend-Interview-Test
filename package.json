@@ -6,7 +6,13 @@
   "author": "Oluwatunmise Olatunbosun",
   "license": "MIT",
   "scripts": {
-    "lint": "eslint . --ext .ts"
+    "pre:build": "rm -rf ./dist",
+    "lint": "eslint . --ext .ts",
+    "build": "yarn run pre:build && yarn tsc -p ./tsconfig.build.json",
+    "orm-cli": "npx typeorm-ts-node-commonjs",
+    "migration:generate": "yarn run orm-cli migration:generate -d ./src/db/data-source.ts",
+    "migration:run": "yarn run orm-cli migration:run -d ./src/db/data-source.ts",
+    "start": "nodemon ./src/server.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
@@ -23,6 +29,7 @@
     "eslint": "^8.18.0",
     "jest": "^28.1.1",
     "node": "^18.4.0",
+    "nodemon": "^2.0.16",
     "supertest": "^6.2.3",
     "ts-node": "^10.8.1",
     "typescript": "^4.7.4"

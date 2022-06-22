@@ -15,8 +15,7 @@
         "plugin:@typescript-eslint/recommended"
     ],
     "rules": {
-        "no-console": "error",
-        "prettier/prettier": ["error", { "endOfLine": "auto" }],
+        "no-console": "warn",
     },
     "env":{
         "node": true,
