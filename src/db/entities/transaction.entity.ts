@@ -19,7 +19,7 @@ export class Transaction extends BaseEntity {
 
   @Column({
     type: "enum",
-    enum: ["paystack", "flutterwave", "monnify"],
+    enum: ["paystack", "flutterwave", "monnify", "wallet"],
     enumName: "enum_transactions_gateway",
     default: "paystack",
   })
@@ -35,4 +35,7 @@ export class Transaction extends BaseEntity {
     default: "pending",
   })
   status!: string;
+
+  @Column()
+  reference!: string;
 }
