@@ -16,7 +16,8 @@
     "migration:run": "yarn run orm-cli migration:run -d ./src/db/data-source.ts",
     "seed": "ts-node ./node_modules/typeorm-seeding/dist/cli.js seed --configName=src/ormconfig.ts",
     "start": "nodemon ./src/server.ts",
-    "test": "yarn jest --clearCache && jest --verbose --runInBand"
+    "test": "yarn jest --clearCache && jest --verbose --runInBand",
+    "production": "nod dist/server.js"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
