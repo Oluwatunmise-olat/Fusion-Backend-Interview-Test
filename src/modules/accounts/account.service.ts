@@ -89,11 +89,11 @@ export class AccountService {
 
       return { hasError: false, message: "Transaction Successful", data: {} };
     } catch (error) {
+      this.queryRunner.rollbackTransaction();
       if (axios.isAxiosError(error)) {
         const errResponse = error.response?.data as unknown as { status: boolean; message: string };
         return { hasError: true, message: errResponse.message, data: {} };
       }
-      this.queryRunner.rollbackTransaction();
       throw new ServerError();
     }
   }
@@ -151,7 +151,6 @@ export class AccountService {
         amount: parseInt(payload.amount) * -1,
         reference: transactionReferenceId,
       });
-      await tempTransactionRepository.save(unsavedSourceTransaction);
 
       const unsavedTargetTransaction = tempTransactionRepository.create({
         status: "successful",
@@ -162,16 +161,20 @@ export class AccountService {
         amount: parseInt(payload.amount),
         reference: transactionReferenceId,
       });
-      await tempTransactionRepository.save(unsavedTargetTransaction);
+
+      await Promise.all([
+        tempTransactionRepository.save(unsavedSourceTransaction),
+        tempTransactionRepository.save(unsavedTargetTransaction),
+      ]);
 
       await this.queryRunner.commitTransaction();
 
       return { hasError: false, message: "Transfer Success", data: {} };
     } catch (error) {
+      await this.queryRunner.rollbackTransaction();
       if (error instanceof BodyFieldError) {
         throw error;
       }
-      await this.queryRunner.rollbackTransaction();
       throw new ServerError();
     }
   }
