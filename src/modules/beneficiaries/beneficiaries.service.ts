@@ -13,6 +13,8 @@ export class BeneficiariesService {
       const targetUser = await this.userRepository.findOneBy({ email });
       if (!targetUser) throw new ResourceNotFoundError("Resource Not Found");
 
+      if (targetUser.id === userId) throw new BodyFieldError({}, "Cannot add self as beneficiary");
+
       await this.beneficiariesRepository.query(`INSERT INTO beneficiaries (source_id, target_id) VALUES (?, ?) `, [
         userId,
         targetUser.id,
@@ -24,7 +26,7 @@ export class BeneficiariesService {
         throw new BodyFieldError({}, "Beneficiary already exists for user");
       }
 
-      if (error instanceof ResourceNotFoundError) {
+      if (error instanceof ResourceNotFoundError || error instanceof BodyFieldError) {
         throw error;
       }
       throw new ServerError();

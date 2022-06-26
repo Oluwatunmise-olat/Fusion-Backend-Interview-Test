@@ -58,8 +58,8 @@ export class AccountService {
     }
   }
 
-  static async fund(
-    payload: { amount: number; transaction_ref: string; description: string },
+  static async verifyTransaction(
+    payload: { amount: string; transaction_ref: string; description: string },
     userId: number,
   ): Promise<IServiceResponse> {
     try {
@@ -67,15 +67,16 @@ export class AccountService {
       const tempTransactionRepository = this.queryRunner.manager.getRepository(Transaction);
       await this.queryRunner.startTransaction();
 
-      const paystackResp = await paystack.verifyPayment(payload.transaction_ref);
       const pendingTransaction = await tempTransactionRepository.findOne({
-        where: { reference: payload.transaction_ref, account: { user: { id: userId } } },
+        where: { reference: payload.transaction_ref, account: { user: { id: userId } }, amount: parseInt(payload.amount) },
       });
 
       if (!pendingTransaction)
         return { hasError: true, message: "Resource Not Found", data: { message: "Invalid reference Id" } };
 
-      if (paystackResp.data.status === "failed" || paystackResp.data.amount !== payload.amount) {
+      const paystackResp = await paystack.verifyPayment(payload.transaction_ref);
+
+      if (paystackResp.data.status === "failed" || paystackResp.data.amount !== parseInt(payload.amount) / 0.01) {
         const unsavedTrans = tempTransactionRepository.create({ ...pendingTransaction, status: "cancelled" });
         await tempTransactionRepository.save(unsavedTrans);
 
@@ -94,8 +95,6 @@ export class AccountService {
       }
       this.queryRunner.rollbackTransaction();
       throw new ServerError();
-    } finally {
-      this.queryRunner.release();
     }
   }
 
@@ -107,7 +106,7 @@ export class AccountService {
     return;
   }
 
-  static async transfer(payload: { email: string; description?: string; amount: number }, userId: number) {
+  static async transfer(payload: { email: string; description?: string; amount: string }, userId: number) {
     try {
       await this.queryRunner.connect();
 
@@ -117,12 +116,23 @@ export class AccountService {
 
       await this.queryRunner.startTransaction();
 
-      const isBeneficiary = await tempBeneficiaryRepository.findOne({ where: { target: { email: payload.email } } });
+      let isBeneficiary = await tempBeneficiaryRepository.query(
+        `SELECT * 
+        FROM beneficiaries 
+        LEFT JOIN users u 
+        ON u.id=target_id 
+        WHERE u.email = ?
+        AND source_id = ?
+        `,
+        [payload.email, userId],
+      );
+
+      isBeneficiary = isBeneficiary[0];
 
       if (!isBeneficiary) throw new BodyFieldError({ message: "Can only send to beneficiaries" }, "Transfer Failed");
       const userBalance = await this.getBalance(userId);
 
-      if (!this.canTransfer(userBalance.data.balance))
+      if (userBalance.data.balance < parseInt(payload.amount))
         return new BodyFieldError({ message: "Insufficient Balance" }, "Transfer Failed");
 
       const [sourceAccount, targetAccount] = await Promise.all([
@@ -138,7 +148,7 @@ export class AccountService {
         gateway: "wallet",
         account: sourceAccount!,
         description: payload?.description,
-        amount: -payload.amount,
+        amount: parseInt(payload.amount) * -1,
         reference: transactionReferenceId,
       });
       await tempTransactionRepository.save(unsavedSourceTransaction);
@@ -149,7 +159,7 @@ export class AccountService {
         gateway: "wallet",
         account: targetAccount!,
         description: payload?.description,
-        amount: +payload.amount,
+        amount: parseInt(payload.amount),
         reference: transactionReferenceId,
       });
       await tempTransactionRepository.save(unsavedTargetTransaction);
@@ -163,22 +173,24 @@ export class AccountService {
       }
       await this.queryRunner.rollbackTransaction();
       throw new ServerError();
-    } finally {
-      await this.queryRunner.release();
     }
   }
 
   static async getBalance(userId: number): Promise<IServiceResponse> {
     try {
-      const userAccount = await this.accountRepository.findOne({ where: { user: { id: userId } } });
-      const userBalance = await this.transactionRepository.query(
-        `SELECT SUM(amount) FROM transactions WHERE account_id=? AND status=?`,
+      const userAccount = await this.accountRepository.findOne({
+        where: { user: { id: userId } },
+        relations: ["currency"],
+      });
+      let userBalance = await this.transactionRepository.query(
+        `SELECT SUM(amount) as balance FROM transactions WHERE account_id=? AND status=?`,
         [userAccount?.id, "successful"],
       );
+      userBalance = parseInt(userBalance[0]["balance"]);
       return {
         hasError: false,
         message: "Success",
-        data: { balance: this.canTransfer(userBalance) ? userBalance : 0, currency: userAccount?.currency.code },
+        data: { balance: this.validBalance(userBalance) ? userBalance : 0, currency: userAccount?.currency },
       };
     } catch (error) {
       throw new ServerError();
@@ -186,25 +198,26 @@ export class AccountService {
   }
 
   static async initializeTransaction(
-    payload: { amount: number; description: string },
+    payload: { amount: string; description: string },
     userId: number,
     userEmail: string,
   ): Promise<IServiceResponse> {
     try {
       const transaction_ref = this.getTransferReferenceCode();
+      const defaultCurrency = (await this.currencyRepository.findOne({ where: { code: "NGN" } }))!;
       const unsavedTransaction = await this.transactionRepository.create({
         gateway: "paystack",
         type: "credit",
-        amount: +payload.amount,
+        amount: parseInt(payload.amount),
         description: payload.description,
         reference: transaction_ref,
-        account: { user: { id: userId } },
+        currency: defaultCurrency,
+        account: (await this.accountRepository.findOneBy({ user: { id: userId } }))!,
       });
-      const defaultCurrency = (await this.currencyRepository.findOne({ where: { code: "NGN" } }))!;
       await this.transactionRepository.save(unsavedTransaction);
       const paystackResp = await paystack.initializeTransaction({
         currency_code: defaultCurrency.code,
-        amount: payload.amount / 0.01,
+        amount: parseInt(payload.amount) / 0.01,
         transaction_ref,
         email: userEmail,
       });
@@ -219,10 +232,11 @@ export class AccountService {
   }
 
   private static getTransferReferenceCode() {
+    // make unique
     return crypto.randomUUID();
   }
 
-  private static canTransfer(amount: number) {
+  private static validBalance(amount: number) {
     return amount > 0;
   }
 }

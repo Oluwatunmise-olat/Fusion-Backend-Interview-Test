@@ -43,7 +43,7 @@ export class AccountController {
 
   static async fund(req: IRequest, res: Response, next: NextFunction) {
     try {
-      const resp = await accountService.fund(req.body, req.userId!);
+      const resp = await accountService.verifyTransaction(req.body, req.userId!);
       const { message, data } = resp;
       if (resp.hasError) return res.status(httpStatus.BAD_REQUEST).json(apiResponse.error(message, data));
       return res.status(httpStatus.OK).json(apiResponse.success(message, data));

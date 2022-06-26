@@ -7,4 +7,14 @@ export class AccountValidator {
       description: Joi.string(),
     }).options({ allowUnknown: true });
   }
+
+  static transfer() {
+    return Joi.object({
+      amount: Joi.number().required(),
+      email: Joi.string()
+        .email({ tlds: { allow: true } })
+        .required(),
+      description: Joi.string(),
+    }).options({ allowUnknown: true });
+  }
 }

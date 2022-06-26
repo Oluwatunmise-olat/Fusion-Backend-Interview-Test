@@ -35,7 +35,7 @@ export class Paystack {
       },
       { headers: this.headers },
     );
-    return resp.data;
+    return resp.data.data;
   }
 
   static verifySignature(headers: IncomingHttpHeaders, event: any) {

@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get("/transactions", authMiddleware.authenticate, accountController.getTransactions);
 router.post(
-  "/fund",
+  "/fund/verify",
   authMiddleware.authenticate,
   requestValidator.validate(accountValidator.schema()),
   accountController.fund,
@@ -17,7 +17,12 @@ router.post(
   requestValidator.validate(accountValidator.schema()),
   accountController.initializeFundingTransaction,
 );
-router.post("/transfer", authMiddleware.authenticate, accountController.performTransfer);
+router.post(
+  "/transfer",
+  authMiddleware.authenticate,
+  requestValidator.validate(accountValidator.transfer()),
+  accountController.performTransfer,
+);
 router.post("/webhook", accountController.paystackWebhook);
 router.get("/balance", authMiddleware.authenticate, accountController.getBalance);
 router.get("", accountController.getAll);

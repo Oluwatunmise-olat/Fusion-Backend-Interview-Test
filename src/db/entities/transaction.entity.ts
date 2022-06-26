@@ -36,6 +36,7 @@ export class Transaction extends BaseEntity {
   })
   status!: string;
 
+  // make unique
   @Column()
   reference!: string;
 }
