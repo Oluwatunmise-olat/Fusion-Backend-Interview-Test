@@ -119,7 +119,7 @@ export class AccountService {
       let isBeneficiary = await tempBeneficiaryRepository.query(
         `SELECT * 
         FROM beneficiaries 
-        LEFT JOIN users u 
+        INNER JOIN users u 
         ON u.id=target_id 
         WHERE u.email = ?
         AND source_id = ?
