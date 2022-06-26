@@ -17,8 +17,9 @@ export class CurrencyController {
 
   static async getOne(req: Request, res: Response, next: NextFunction) {
     try {
-      const { currency_Id } = req.params;
-      const resp = await currencyService.getOne(parseInt(currency_Id));
+      const { currencyId } = req.params;
+      console.log(currencyId);
+      const resp = await currencyService.getOne(parseInt(currencyId));
       const { message, data } = resp;
       return res.status(httpStatus.OK).json(apiResponse.success(message, data));
     } catch (error) {
