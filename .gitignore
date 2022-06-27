@@ -78,3 +78,6 @@ tmp/*
 dist/
 
 *.DS_Store
+
+.env.test
+fusion-fintech.dbml

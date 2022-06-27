@@ -36,6 +36,7 @@ export class CurrencyService {
       if (!currency) throw new ResourceNotFoundError("Resource Not Found", {});
       return { hasError: false, message: "Success", data: currency };
     } catch (error) {
+      if (error instanceof ResourceNotFoundError) throw error;
       throw new ServerError();
     }
   }

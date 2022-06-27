@@ -12,5 +12,16 @@ services:
       - "3309:3306"
     restart: always
 
+  fusion_test_db:
+    image: 'mysql:latest'
+    container_name: 'fusiontest_db'
+    env_file:
+      - ./.env.test
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./fusion-fintech.sql:/docker-entrypoint-initdb.d/create-db.sql
+    restart: always
+
 volumes:
   fusion_vol:
